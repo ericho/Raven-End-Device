@@ -1,0 +1,129 @@
+COMPONENTS_PATH = ./../../../../BitCloud/Components
+APP_NAME = Blink
+CONFIG_NAME = Coordinator_Raven_Atmega1284_Rf230B_4Mhz_Gcc
+LIST_PATH = $(CONFIG_NAME)/List
+EXE_PATH = $(CONFIG_NAME)/Exe
+OBJ_PATH = $(CONFIG_NAME)/Obj
+
+include ./../../../../BitCloud/lib/Makerules_Atmega1284_Gcc
+
+DEFINES = \
+  -DBOARD_RAVEN \
+  -DATMEGA1284 \
+  -DAT86RF230B \
+  -DHAL_4MHz \
+  -DNO_SECURITY_MODE \
+  -DSTACK_TYPE_COORDINATOR 
+
+INCLUDES = \
+  -I./../.. \
+  -I./../../include \
+  -I./../../../../BitCloud/Components/BSP/RAVEN/include \
+  -I./../../../../BitCloud/lib \
+  -I./../../../../BitCloud/Components/HAL/include \
+  -I./../../../../BitCloud/Components/BSP \
+  -I./../../../../BitCloud/Components/BSP/include \
+  -I./../../../../BitCloud/Components/NWK/include \
+  -I./../../../../BitCloud/Components/NWK/include/private \
+  -I./../../../../BitCloud/Components/ZDO/include \
+  -I./../../../../BitCloud/Components/ZDO/include/private \
+  -I./../../../../BitCloud/Components/APS/include \
+  -I./../../../../BitCloud/Components/APS/include/private \
+  -I./../../../../BitCloud/Components/SystemEnvironment/include \
+  -I./../../../../BitCloud/Components/ConfigServer/include \
+  -I./../../../../BitCloud/Components/ConfigServer/include/private \
+  -I./../../../../BitCloud/Components/PersistDataServer/include \
+  -I./../../../../BitCloud/Components/PersistDataServer/include/private \
+  -I./../../../../BitCloud/Components/Security/TrustCentre/include \
+  -I./../../../../BitCloud/Components/Security/ServiceProvider/include \
+  -I./../../../../BitCloud/Components/HAL/avr/atmega1284/common/include \
+  -I./../../../../BitCloud/Components/HAL/avr/atmega1284/raven/include \
+  -I./../../../../BitCloud/Components/MAC_PHY/include \
+  -I./../../../../BitCloud/Components/MAC_PHY/MAC_ENV/include \
+  -I./../../../../BitCloud/Components/MAC_PHY/MAC_HWI/include \
+  -I./../../../../BitCloud/Components/MAC_PHY/MAC_HWD_PHY/include \
+  -I./../../../../BitCloud/Components/MAC_PHY/MAC_HWD_PHY/RF230/PHY/include \
+  -I./../../../../BitCloud/Components/MAC_PHY/MAC_HWD_PHY/RF230/MAC_HWD/include 
+
+LIBS = \
+  ./../../../../BitCloud/lib/libHAL_Raven_Atmega1284_4Mhz_Gcc.a \
+  ./../../../../BitCloud/lib/libBc_Coordinator_Atmega1284_Rf230B_Gcc.a \
+  ./../../../../BitCloud/lib/WdtInitatmega1284_Gcc.o 
+
+SRCS = \
+  ./../../../../BitCloud/Components/PersistDataServer/src/pdsWriteData.c \
+  ./../../../../BitCloud/Components/PersistDataServer/src/pdsDataServer.c \
+  ./../../../../BitCloud/Components/PersistDataServer/src/pdsCrcService.c \
+  ./../../../../BitCloud/Components/BSP/RAVEN/src/sipc.c \
+  ./../../../../BitCloud/Components/BSP/RAVEN/src/joystik.c \
+  ./../../../../BitCloud/Components/BSP/RAVEN/src/bspTaskManager.c \
+  ./../../../../BitCloud/Components/BSP/RAVEN/src/lcd.c \
+  ./../../../../BitCloud/Components/BSP/RAVEN/src/sensors.c \
+  ./../../../../BitCloud/Components/ConfigServer/src/csPersistentMem.c \
+  ./../../../../BitCloud/Components/ConfigServer/src/csMem.c \
+  ./../../../../BitCloud/Components/ConfigServer/src/configServer.c 
+
+PREINCLUDE = MakerulesBc_Coordinator_Atmega1284_Rf230B_Gcc.h
+
+SRCS += $(wildcard ./../../src/*.c)
+SRCS += $(wildcard ./../../../common/src/*.c)
+
+CSRCS = $(filter %.c, $(SRCS))
+OBJS = $(addprefix $(OBJ_PATH)/, $(notdir %$(subst .c,.o,$(CSRCS))))
+
+ASM_FILE_EXT = s
+
+ifneq (, $(findstring .$(ASM_FILE_EXT), $(SRCS)))
+  ASRCS = $(filter %.$(ASM_FILE_EXT), $(SRCS))
+  OBJS += $(addprefix $(OBJ_PATH)/, $(notdir %$(subst .$(ASM_FILE_EXT),.o,$(ASRCS))))
+endif
+
+CFLAGS += $(DEFINES)
+CFLAGS += $(INCLUDES)
+CFLAGS += -include $(PREINCLUDE)
+CFLAGS += -g
+
+ASFLAGS = $(INCLUDES)
+ASFLAGS += $(filter -mmcu%,$(CFLAGS))
+
+LD = $(CC)
+LINKER_FLAGS = -Wl,-Map=$(LIST_PATH)/$(APP_NAME).map -Wl,--gc-sections
+LINKER_FLAGS += -Wl,--script=./../../linkerScr/atmega1284p.ld
+LINKER_FLAGS += $(filter -mmcu%,$(CFLAGS))
+
+.PHONY: all directories clean size root_files
+
+all: directories $(EXE_PATH)/$(APP_NAME).elf $(EXE_PATH)/$(APP_NAME).hex $(EXE_PATH)/$(APP_NAME).srec $(EXE_PATH)/$(APP_NAME).bin root_files size
+
+$(OBJ_PATH)/%.o: $(SRCS)
+	$(CC) $(CFLAGS) $(filter %$(subst .o,.c,$(notdir $@)), $(SRCS)) -o $@
+
+
+$(EXE_PATH)/$(APP_NAME).elf: $(OBJS)
+	$(LD) $(LINKER_FLAGS) $(OBJS) -Wl,-\( $(LIBS) -Wl,-\) -o $@
+
+$(EXE_PATH)/$(APP_NAME).srec: $(EXE_PATH)/$(APP_NAME).elf
+	$(OBJCOPY) -O srec --srec-len 128 $^ $@
+
+$(EXE_PATH)/$(APP_NAME).hex: $(EXE_PATH)/$(APP_NAME).elf
+	$(OBJCOPY) -O ihex -R .eeprom $^ $@
+
+$(EXE_PATH)/$(APP_NAME).bin: $(EXE_PATH)/$(APP_NAME).elf
+	$(OBJCOPY) -O binary --strip-debug --strip-unneeded -R .eeprom $^ $@
+
+root_files:
+	cp -f $(EXE_PATH)/*.* ./../../
+
+clean:
+	rm -rf $(CONFIG_NAME) ./../../$(APP_NAME).elf ./../../$(APP_NAME).hex ./../../$(APP_NAME).srec ./../../$(APP_NAME).bin
+
+directories:
+	@mkdir -p $(LIST_PATH)
+	@mkdir -p $(EXE_PATH)
+	@mkdir -p $(OBJ_PATH)
+
+size: $(EXE_PATH)/$(APP_NAME).elf
+	@echo
+	@$(SIZE) -td $(EXE_PATH)/$(APP_NAME).elf
+
+# eof Makefile
