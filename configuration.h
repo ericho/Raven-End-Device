@@ -28,5 +28,6 @@
   #define APP_USART_CHANNEL USART_CHANNEL_VCP
 #endif
 
+// Agregan lineas en alguna parte.... 
 
 #endif // _CONFIGURATION_H_
