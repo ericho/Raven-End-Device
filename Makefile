@@ -1,6 +1,6 @@
 # Configuracion del proyecto 
 
-APP_NAME = Ejercicio1
+APP_NAME = Raven_EndDev
 CONFIG_NAME = EndDevice_Raven
 LIST_PATH = $(CONFIG_NAME)/List
 EXE_PATH = $(CONFIG_NAME)/Exe
@@ -126,7 +126,7 @@ root_files:
 clean:
 	rm -rf $(CONFIG_NAME) $(APP_NAME).elf $(APP_NAME).hex $(APP_NAME).srec $(APP_NAME).bin
 
-prog:
+install:
 	avrdude -p $(DEVICE_NO) -c $(PROGRAMMER) -P $(PORT) -U flash:w:$(APP_NAME).hex
 
 prog_all: #Compila y programa
