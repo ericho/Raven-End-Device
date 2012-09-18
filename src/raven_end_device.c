@@ -198,6 +198,7 @@ void data_sensor_readed(void)
 void APS_DataIndDevice(APS_DataInd_t *indData)
 {
     (void)indData;
+	app_send_lcd_msg("LLEGO  ");
 }
 
 /**
@@ -210,6 +211,7 @@ static void APS_DataConf(APS_DataConf_t *confInfo)
     {
         air_tx_finished();
         appState = START_SLEEP_STATE;
+		//appState = READING_SENSORS_STATE;
     }
     app_post_global_task();
 }
