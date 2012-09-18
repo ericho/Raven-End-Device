@@ -28,11 +28,11 @@ AppState_t appState = APP_INITING_STATE;
 //DeviceState_t appDeviceState = INITIAL_DEVICE_STATE;
 
 app_message_request_t app_message;
-// Primitiva APS_DataReq
 APS_DataReq_t   message_params;
 HAL_AppTimer_t  device_timer;
 ZDO_SleepReq_t sleep_request;
-
+app_command_node_t command_node;
+uint8_t operation_mode;
 
 /**
  * Local variables
@@ -73,6 +73,7 @@ void APL_TaskHandler(void)
             simple_descriptor.AppDeviceId = LANIA_DEVICE_ID;
             simple_descriptor.AppDeviceVersion = LANIA_DEVICE_VERSION;
 
+            operation_mode = 0x0;
             endpoint_params.simpleDescriptor = &simple_descriptor;
             app_message.data.nodeType = DEVICE_TYPE_END_DEVICE;
             endpoint_params.APS_DataInd = APS_DataIndDevice;
@@ -118,10 +119,66 @@ void APL_TaskHandler(void)
             ZDO_StartNetworkReq(&network_params);
             break;
 
-        case APP_IN_NETWORK_STATE:
-            // visualizar red iniciada
-            network_started();
-            appState = READING_SENSORS_STATE;
+        case WAIT_FOR_CMD_STATE:
+            operation_mode = command_node.op_mode;
+            break;
+
+        case PROCESS_CMD_STATE:
+            switch (command_node.command)
+            {
+                case REQUEST_DATA_SENSOR:
+                    if (operation_mode == REQUEST_RESPONSE_MODE)
+                    {
+                        appState = READING_SENSORS_STATE;
+                        app_send_lcd_msg("DATA   ");
+                    }
+                    break;
+
+                case CONFIGURE_MODE:
+                    if (command_node.op_mode == REQUEST_RESPONSE_MODE)
+                    {
+                        operation_mode = REQUEST_RESPONSE_MODE;
+                        app_send_lcd_msg("REQUEST");
+                    }
+                    else if (command_node.op_mode == SLEEPING_MODE)
+                    {
+                        operation_mode = SLEEPING_MODE;
+                        app_send_lcd_msg("SLEEP  ");
+                    }
+                    else if (command_node.op_mode == SLEEPING_RF_MODE)
+                    {
+                        operation_mode = SLEEPING_RF_MODE;
+                        app_send_lcd_msg("RF MODE");
+                        // Configurar el tiempo de actividad del radio. 
+                    }
+                    else
+                        operation_mode = 0x0;
+                    appState = WAIT_FOR_CMD_STATE;
+                    break;
+
+                case START_OPERATION:
+                    if (operation_mode != 0x0)
+                    {
+                        appState = READING_SENSORS_STATE;
+                        app_send_lcd_msg("START  ");
+                    }
+                    break;
+
+                case STOP_OPERATION:
+                    operation_mode = 0x0;
+                    app_send_lcd_msg("STOP   ");
+                    appState = WAIT_FOR_CMD_STATE;
+                    break;
+
+                case SLEEP_NODE:
+                    operation_mode = 0x0;                    
+                    app_send_lcd_msg("SLEEP  ");
+                    appState = START_SLEEP_STATE;
+                    break;
+
+                default:
+                    break;
+            }
             app_post_global_task();
             break;
 
@@ -139,9 +196,22 @@ void APL_TaskHandler(void)
 
         case SENDING_DATA_STATE:
             air_tx_started();
-            APS_DataReq(&message_params);
+            if (operation_mode != 0x0)
+            {
+                APS_DataReq(&message_params);
+            }
+            else
+            {
+                appState = WAIT_FOR_CMD_STATE;
+                app_post_global_task();
+            }
+            
             break;
 
+        case START_RF_SLEEP_STATE:
+            
+            break;
+            
         case START_SLEEP_STATE:
             visual_sleep();
             if (!lcd_ready_to_sleep())
@@ -174,10 +244,10 @@ void APL_TaskHandler(void)
 static void ZDO_StartNetworkConf(ZDO_StartNetworkConf_t *confirm_info)
 {
     if (confirm_info->status == ZDO_SUCCESS_STATUS)
-        appState = APP_IN_NETWORK_STATE;
+        appState = WAIT_FOR_CMD_STATE;
     else
         appState = APP_STARTING_NETWORK_STATE;
-    
+    network_started();
     app_post_global_task();
 }
 
@@ -197,8 +267,14 @@ void data_sensor_readed(void)
 
 void APS_DataIndDevice(APS_DataInd_t *indData)
 {
-    (void)indData;
-	app_send_lcd_msg("LLEGO  ");
+    app_command_node_t *ptr;
+    ptr = (app_command_node_t *) indData->asdu;
+    command_node.command = ptr->command;
+    command_node.op_mode = ptr->op_mode;
+    command_node.samples = ptr->samples;
+    command_node.time = ptr->time;
+    appState = PROCESS_CMD_STATE;
+    app_post_global_task();
 }
 
 /**
@@ -210,8 +286,25 @@ static void APS_DataConf(APS_DataConf_t *confInfo)
     if (confInfo->status == APS_SUCCESS_STATUS)
     {
         air_tx_finished();
-        appState = START_SLEEP_STATE;
-		//appState = READING_SENSORS_STATE;
+        if (operation_mode == REQUEST_RESPONSE_MODE)
+        {
+            appState = WAIT_FOR_CMD_STATE;
+        }
+        else if (operation_mode == SLEEPING_MODE)
+        {
+            appState = START_SLEEP_STATE;
+        }
+        else if (operation_mode == SLEEPING_RF_MODE)
+        {
+            appState = START_RF_SLEEP_STATE;
+        }
+        else
+        {
+            appState = WAIT_FOR_CMD_STATE;
+        }
+
+        
+        
     }
     app_post_global_task();
 }
@@ -266,7 +359,14 @@ void ZDO_SleepConf(ZDO_SleepConf_t *conf)
 void ZDO_WakeUpInd(void)
 {
     visual_wakeup();
-    appState = READING_SENSORS_STATE;
+    if (operation_mode == 0x0)
+    {
+        appState = WAIT_FOR_CMD_STATE;
+    }
+    else
+    {
+        appState = READING_SENSORS_STATE;
+    }
     app_post_global_task();
 }
 

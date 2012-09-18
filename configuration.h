@@ -42,7 +42,7 @@
 #define CS_UID 0x0LL // Unique Identifier 
 #define CS_NWK_UNIQUE_ADDR false
 #define CS_NWK_ADDR 0x000B // Network address
-#define CS_END_DEVICE_SLEEP_PERIOD 10000
+#define CS_END_DEVICE_SLEEP_PERIOD 5000
 
 #define CS_APS_DATA_REQ_BUFFERS_AMOUNT 3
 #define CS_APS_ACK_FRAME_BUFFERS_AMOUNT 2
