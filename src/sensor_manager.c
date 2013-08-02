@@ -46,7 +46,7 @@ void read_sensors(void (*sensor_readed)(void))
     // Agregar aqui funciones que obtengan informacion de otros sensores. 
     // Cada funcion debe alimentar a la estructura app_message.data
     // Se deben evitar ciclos infinitos. 
-    
+    send_command(1);
     BSP_ReadTemperatureData(temperature_data_ready);
     callback = sensor_readed;
 }

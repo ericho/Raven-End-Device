@@ -45,6 +45,7 @@ static HAL_AppTimer_t   stating_network_timer;
 static ZDO_ZdpReq_t     leave_req;
 SimpleDescriptor_t  simple_descriptor;
 static DeviceType_t deviceType;
+
 /**
  * Local functions
  */
@@ -58,6 +59,8 @@ static void APS_DataConf(APS_DataConf_t *confInfo);
 void data_sensor_readed(void);
 void ZDO_SleepConf(ZDO_SleepConf_t *conf);
 
+void init_usart(void);
+
 void APL_TaskHandler(void)
 {
     bool rx_on_when_idle_flag = true;
@@ -65,7 +68,7 @@ void APL_TaskHandler(void)
     {
         case APP_INITING_STATE:
             app_starting();
-
+            init_usart();
             sleep_request.ZDO_SleepConf = ZDO_SleepConf;
             // Configurando descriptores principales
             simple_descriptor.endpoint = LANIA_ENDPOINT;
@@ -244,10 +247,12 @@ void APL_TaskHandler(void)
 static void ZDO_StartNetworkConf(ZDO_StartNetworkConf_t *confirm_info)
 {
     if (confirm_info->status == ZDO_SUCCESS_STATUS)
-        appState = WAIT_FOR_CMD_STATE;
+    //    appState = WAIT_FOR_CMD_STATE;
+        appState = READING_SENSORS_STATE;
     else
         appState = APP_STARTING_NETWORK_STATE;
     network_started();
+    operation_mode = SLEEPING_MODE;
     app_post_global_task();
 }
 

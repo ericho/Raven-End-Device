@@ -48,6 +48,8 @@
 #define SLEEPING_RF_MODE        0x03
 
 
+#define APP_RX_BUFFER_SIZE  255
+
 typedef enum
 {
     APP_INITING_STATE,
@@ -103,6 +105,10 @@ extern void read_sensors(void (*sensor_readed)(void));
 extern void start_sensor_manager(void);
 extern void stop_sensor_manager(void);
 
+bool usart_tx_busy;
+bool new_data_on_buffer;
+uint8_t offset_rx_buffer;
+uint8_t app_rx_buffer[APP_RX_BUFFER_SIZE];
 
 #define app_open_lcd        BSP_OpenLcd
 #define app_send_lcd_cmd    BSP_SendLcdCmd
