@@ -101,7 +101,8 @@ void APL_TaskHandler(void)
             message_params.profileId                = simple_descriptor.AppProfileId;
             message_params.dstAddrMode              = APS_SHORT_ADDRESS;
             message_params.dstAddress.shortAddress  = CPU_TO_LE16(0);
-            message_params.dstEndpoint              = LANIA_ENDPOINT;
+            //message_params.dstEndpoint              = LANIA_ENDPOINT;
+			message_params.dstEndpoint              = APS_BROADCAST_ENDPOINT;
             message_params.clusterId                = CPU_TO_LE16(1);
             message_params.srcEndpoint              = simple_descriptor.endpoint;
             message_params.asduLength               = sizeof(app_message.data);
@@ -247,8 +248,10 @@ void APL_TaskHandler(void)
 static void ZDO_StartNetworkConf(ZDO_StartNetworkConf_t *confirm_info)
 {
     if (confirm_info->status == ZDO_SUCCESS_STATUS)
-    //    appState = WAIT_FOR_CMD_STATE;
-        appState = READING_SENSORS_STATE;
+	{
+        appState = WAIT_FOR_CMD_STATE;
+		app_message.data.shortAddr = confirm_info->shortAddr;
+	}
     else
         appState = APP_STARTING_NETWORK_STATE;
     network_started();
